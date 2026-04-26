@@ -81,13 +81,22 @@ export default function AoneAI() {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:SYSTEM_PROMPT, messages:apiMsgs })
+        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1024, system:SYSTEM_PROMPT, messages:apiMsgs })
       });
       const data = await res.json();
-      const reply = data.content?.map(b => b.text||"").join("") || "No response received.";
+      console.log("API status:", res.status, "data type:", data.type);
+      let reply = "No response received.";
+      if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+        reply = data.content.map(b => b.text||"").join("") || "No response received.";
+      } else if (data.error) {
+        reply = "⚠ API Error: " + (data.error.message || JSON.stringify(data.error));
+      } else if (data.type === "error") {
+        reply = "⚠ Error: " + (data.error?.message || JSON.stringify(data));
+      }
       setMessages([...newMsgs, { role:"assistant", content:reply }]);
     } catch(e) {
-      setMessages([...newMsgs, { role:"assistant", content:"⚠ Connection error. Please retry." }]);
+      console.error("Fetch error:", e);
+      setMessages([...newMsgs, { role:"assistant", content:"⚠ Connection error: " + e.message }]);
     }
     setAiLoading(false);
     setTimeout(() => inputRef.current?.focus(), 100);
